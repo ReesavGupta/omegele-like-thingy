@@ -14,11 +14,18 @@ export default class userManager {
   public addUser = (socket: CustomWebSocket): void => {
     this.users.push(socket)
     this.queue.push(socket)
-    socket.emit('lobby')
 
-    if (this.queue.length > 2) {
+    socket.send(
+      JSON.stringify({
+        type: 'lobby',
+        data: {},
+      })
+    )
+
+    if (this.queue.length >= 2) {
       this.clearQueue()
     }
+    this.initHandlers(socket)
   }
 
   public removeUser = (socket: CustomWebSocket): void => {
@@ -35,6 +42,36 @@ export default class userManager {
 
     if (!user1 || !user2) return
 
+    this.room.createRoom(user1, user2)
+
+    // this.initHandlers()
+
     this.clearQueue()
+  }
+
+  public initHandlers = (socket: CustomWebSocket) => {
+    socket.onmessage = (event) => {
+      if (typeof event.data === 'string') {
+        const message = JSON.parse(event.data)
+
+        if (message.type === 'offer') {
+          const { sdp, roomId }: { sdp: string; roomId: string } = message.data
+
+          this.room.onOffer(sdp, roomId, socket)
+        } else if (message.type === 'answer') {
+          const { sdp, roomId }: { sdp: string; roomId: string } = message.data
+
+          this.room.onAnswer(sdp, roomId, socket)
+        } else if (message.type === 'add-ice-candidate') {
+          const {
+            roomId,
+            candidate,
+            type,
+          }: { roomId: string; candidate: string; type: string } = message.data
+
+          this.room.onAddIceCandidate(roomId, candidate, type, socket)
+        }
+      }
+    }
   }
 }
