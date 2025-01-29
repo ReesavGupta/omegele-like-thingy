@@ -69,8 +69,7 @@ export default class RoomManager {
       })
     )
   }
-  // and here we start sharing the ICEcandidates 
-  // prolly google ko chalawcha hola 
+
   public onAddIceCandidate = (
     roomId: string,
     candidate: string,

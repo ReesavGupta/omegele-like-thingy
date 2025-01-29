@@ -1,5 +1,18 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { Landing } from './components/landing'
 function App() {
-  return <>hello world</>
+  return (
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/"
+            element={<Landing />}
+          />
+        </Routes>
+      </BrowserRouter>
+    </>
+  )
 }
 
 export default App

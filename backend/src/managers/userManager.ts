@@ -51,26 +51,27 @@ export default class userManager {
 
   public initHandlers = (socket: CustomWebSocket) => {
     socket.onmessage = (event) => {
-      if (typeof event.data === 'string') {
-        const message = JSON.parse(event.data)
+      if (!(typeof event.data === 'string')) {
+        return
+      }
+      const message = JSON.parse(event.data)
 
-        if (message.type === 'offer') {
-          const { sdp, roomId }: { sdp: string; roomId: string } = message.data
+      if (message.type === 'offer') {
+        const { sdp, roomId }: { sdp: string; roomId: string } = message.data
 
-          this.room.onOffer(sdp, roomId, socket)
-        } else if (message.type === 'answer') {
-          const { sdp, roomId }: { sdp: string; roomId: string } = message.data
+        this.room.onOffer(sdp, roomId, socket)
+      } else if (message.type === 'answer') {
+        const { sdp, roomId }: { sdp: string; roomId: string } = message.data
 
-          this.room.onAnswer(sdp, roomId, socket)
-        } else if (message.type === 'add-ice-candidate') {
-          const {
-            roomId,
-            candidate,
-            type,
-          }: { roomId: string; candidate: string; type: string } = message.data
+        this.room.onAnswer(sdp, roomId, socket)
+      } else if (message.type === 'add-ice-candidate') {
+        const {
+          roomId,
+          candidate,
+          type,
+        }: { roomId: string; candidate: string; type: string } = message.data
 
-          this.room.onAddIceCandidate(roomId, candidate, type, socket)
-        }
+        this.room.onAddIceCandidate(roomId, candidate, type, socket)
       }
     }
   }

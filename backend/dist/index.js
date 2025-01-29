@@ -20,7 +20,7 @@ wss.generateIdForSocketConnections = (socket) => {
 const userManager = new userManager_1.default();
 wss.on('connection', (socket) => {
     wss.generateIdForSocketConnections(socket);
-    console.log(socket.id);
+    userManager.addUser(socket);
 });
 const port = 3000;
 server.listen(port, () => {
