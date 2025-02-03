@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Room } from './room'
 
 export const Landing = () => {
   const [localVideoTrack, setLocalVideoTrack] = useState<MediaStreamTrack>()
@@ -61,7 +62,10 @@ export const Landing = () => {
           </div>
         </div>
       ) : (
-        <div>hello world</div>
+        <Room
+          localVideoTrack={localVideoTrack}
+          localAudioTrack={localAudioTrack}
+        />
       )}
     </div>
   )

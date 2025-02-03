@@ -20,7 +20,7 @@ class RoomManager {
             if (!this.rooms.get(roomId)) {
                 return;
             }
-            const recievingSocket = (room === null || room === void 0 ? void 0 : room.user1.id) === socket.id ? room === null || room === void 0 ? void 0 : room.user1 : room === null || room === void 0 ? void 0 : room.user2;
+            const recievingSocket = (room === null || room === void 0 ? void 0 : room.user1.id) === socket.id ? room === null || room === void 0 ? void 0 : room.user2 : room === null || room === void 0 ? void 0 : room.user1;
             if (!recievingSocket) {
                 return;
             }
@@ -37,7 +37,7 @@ class RoomManager {
             if (!room) {
                 return;
             }
-            const answeringUser = room.user1.id === socket.id ? room.user1 : room.user2;
+            const answeringUser = room.user1.id === socket.id ? room.user2 : room.user1;
             answeringUser.send(JSON.stringify({
                 type: 'answer',
                 data: {

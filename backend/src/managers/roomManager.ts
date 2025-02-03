@@ -36,7 +36,7 @@ export default class RoomManager {
     }
 
     const recievingSocket =
-      room?.user1.id === socket.id ? room?.user1 : room?.user2
+      room?.user1.id === socket.id ? room?.user2 : room?.user1
 
     if (!recievingSocket) {
       return
@@ -57,7 +57,7 @@ export default class RoomManager {
       return
     }
 
-    const answeringUser = room.user1.id === socket.id ? room.user1 : room.user2
+    const answeringUser = room.user1.id === socket.id ? room.user2 : room.user1
 
     answeringUser.send(
       JSON.stringify({
