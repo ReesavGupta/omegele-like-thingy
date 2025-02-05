@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 class RoomManager {
     constructor() {
         this.createRoom = (user1, user2) => {
+            console.log(`inside create room`);
+            console.log(`this is user1 ${user1.id} this is user2 ${user2.id}`);
             const roomId = this.generateRoomId();
             const room = { user1, user2 };
             this.rooms.set(roomId, room);

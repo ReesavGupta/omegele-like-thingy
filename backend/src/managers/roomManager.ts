@@ -11,10 +11,11 @@ export default class RoomManager {
   }
 
   public createRoom = (user1: CustomWebSocket, user2: CustomWebSocket) => {
+    console.log(`inside create room`)
+    console.log(`this is user1 ${user1.id} this is user2 ${user2.id}`)
     const roomId: string = this.generateRoomId()
     const room: Room = { user1, user2 }
     this.rooms.set(roomId, room)
-
     user1.send(
       JSON.stringify({
         type: 'send-offer',
@@ -31,6 +32,7 @@ export default class RoomManager {
 
   public onOffer = (sdp: string, roomId: string, socket: CustomWebSocket) => {
     const room = this.rooms.get(roomId)
+
     if (!this.rooms.get(roomId)) {
       return
     }
@@ -41,6 +43,7 @@ export default class RoomManager {
     if (!recievingSocket) {
       return
     }
+
     recievingSocket.send(
       JSON.stringify({
         type: 'offer',

@@ -29,18 +29,40 @@ export const Room: React.FC<RoomProps> = ({
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data)
       const pc = new RTCPeerConnection()
+      // setSendingPC(pc)
       switch (data.type) {
         case 'send-offer':
+          console.log(`inside send-offer`)
+          console.log(`data: ${data.data}`)
           setLobby(false)
 
-          const { roomId } = data.data
-
+          const roomId = data.data
+          console.log(`this is roomID ${roomId}`)
           setSendingPC(pc)
+          console.log(`this is localVideoTrack ${localVideoTrack}`)
 
-          sendingPc?.addTrack(localVideoTrack!)
-          sendingPc?.addTrack(localAudioTrack!)
+          if (localVideoTrack) pc.addTrack(localVideoTrack)
+          if (localAudioTrack) pc.addTrack(localAudioTrack)
 
-          pc.addIceCandidate = async (e) => {
+          console.log('this is sendingPc: ', sendingPc)
+          console.log('this is pc: ', pc)
+
+          pc.onnegotiationneeded = async () => {
+            const sdp = await pc?.createOffer()
+            console.log(`this is the sdp: ${sdp}`)
+            await pc?.setLocalDescription(sdp)
+
+            socket.send(
+              JSON.stringify({
+                data: {
+                  sdp,
+                  roomId,
+                },
+                type: 'offer',
+              })
+            )
+          }
+          pc.onicecandidate = async (e) => {
             socket.send(
               JSON.stringify({
                 data: {
@@ -53,21 +75,6 @@ export const Room: React.FC<RoomProps> = ({
             )
           }
 
-          pc.onnegotiationneeded = async () => {
-            const sdp = await sendingPc?.createOffer()
-
-            await sendingPc?.setLocalDescription(sdp)
-
-            socket.send(
-              JSON.stringify({
-                data: {
-                  sdp,
-                  roomId,
-                },
-                type: 'offer',
-              })
-            )
-          }
           break
 
         case 'offer':
