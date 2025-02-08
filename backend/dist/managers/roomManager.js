@@ -58,7 +58,7 @@ class RoomManager {
                 type: 'add-ice-candidate',
                 data: {
                     candidate,
-                    candidateType: type,
+                    type,
                 },
             }));
         };

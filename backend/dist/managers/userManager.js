@@ -57,6 +57,9 @@ class userManager {
                 else if (message.type === 'add-ice-candidate') {
                     console.log(`we have reached add-ice candidate`);
                     const { roomId, candidate, type, } = message.data;
+                    console.log(`logging roomId: ${roomId}`);
+                    console.log(`logging candidate: ${candidate}`);
+                    console.log(`logging type: ${type}`);
                     this.room.onAddIceCandidate(roomId, candidate, type, socket);
                 }
             };

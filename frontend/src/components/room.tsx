@@ -2,227 +2,183 @@ import { useEffect, useRef, useState } from 'react'
 
 interface RoomProps {
   localVideoTrack: MediaStreamTrack | undefined
-  localAudioTrack: MediaStreamTrack | undefined
 }
-export const Room: React.FC<RoomProps> = ({
-  localAudioTrack,
-  localVideoTrack,
-}) => {
+
+export const Room: React.FC<RoomProps> = ({ localVideoTrack }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const [lobby, setLobby] = useState<boolean>(true)
   const [sendingPc, setSendingPC] = useState<RTCPeerConnection | null>(null)
-  const [recievingPc, setRecievingPC] = useState<RTCPeerConnection | null>(null)
-  const [remoteVideoStream, setRemoteVideoStream] =
-    useState<MediaStream | null>(null)
-  const [remoteAudioTrack, setRemoteAudioTrack] =
-    useState<MediaStreamTrack | null>(null)
-  const [remoteVideoTrack, setRemoteVideoTrack] =
-    useState<MediaStreamTrack | null>(null)
+  const [receivingPc, setReceivingPC] = useState<RTCPeerConnection | null>(null)
+  const socketRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
     const socket = new WebSocket('ws://localhost:3000')
-    if (!socket) {
-      alert(`server connection error 🙄`)
-    }
+    socketRef.current = socket
 
-    socket.onmessage = (message) => {
+    socket.onopen = () => console.log('✅ WebSocket connected')
+    socket.onerror = (err) => console.error('❌ WebSocket error', err)
+
+    socket.onmessage = async (message) => {
       const data = JSON.parse(message.data)
-      const pc = new RTCPeerConnection()
-      // setSendingPC(pc)
+      console.log('📩 Received WebSocket Message:', data)
+
       switch (data.type) {
-        case 'send-offer':
-          console.log(`inside send-offer`)
-          console.log(`data: ${data.data}`)
+        case 'send-offer': {
           setLobby(false)
-
           const roomId = data.data
-          console.log(`this is roomID ${roomId}`)
-          setSendingPC(pc)
-          console.log(`this is localVideoTrack ${localVideoTrack}`)
+          const pc = new RTCPeerConnection()
 
-          if (localVideoTrack) pc.addTrack(localVideoTrack)
-          if (localAudioTrack) pc.addTrack(localAudioTrack)
-
-          console.log('this is sendingPc: ', sendingPc)
-          console.log('this is pc: ', pc)
-
-          pc.onnegotiationneeded = async () => {
-            const sdp = await pc?.createOffer()
-            console.log(`this is the sdp: ${sdp}`)
-            await pc?.setLocalDescription(sdp)
-
-            socket.send(
-              JSON.stringify({
-                data: {
-                  sdp,
-                  roomId,
-                },
-                type: 'offer',
-              })
-            )
-          }
-          pc.onicecandidate = async (e) => {
-            socket.send(
-              JSON.stringify({
-                data: {
-                  roomId: roomId,
-                  candidate: e?.candidate,
-                  type: 'sender',
-                },
-                type: 'add-ice-candidate',
-              })
-            )
-          }
-
-          break
-
-        case 'offer':
-          const { roomId: offerRoomId, sdp: remoteSdp } = data.data
-          setLobby(false)
-
-          const pc2 = new RTCPeerConnection()
-          setRecievingPC(pc2)
-
-          if (!recievingPc) return
-
-          recievingPc.setRemoteDescription(remoteSdp)
-
-          const sdp = recievingPc.createAnswer()
-
-          const stream = new MediaStream()
-
-          if (!remoteVideoRef.current) {
-            console.log(`no remote video stream`)
+          if (!localVideoTrack) {
+            console.warn('⚠️ No local video track found.')
             return
           }
 
-          remoteVideoRef.current.srcObject = stream
+          const stream = new MediaStream([localVideoTrack])
+          if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
-          setRemoteVideoStream(stream)
+          pc.addTrack(localVideoTrack, stream)
 
-          window.pcr = recievingPc
+          setSendingPC(pc)
 
-          recievingPc.ontrack = (e) => {
-            alert('ontrack')
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              socket.send(
+                JSON.stringify({
+                  type: 'add-ice-candidate',
+                  data: { roomId, candidate: e.candidate, type: 'sender' },
+                })
+              )
+            }
           }
 
-          recievingPc.onicecandidate = async (e) => {
+          pc.onnegotiationneeded = async () => {
+            const offer = await pc.createOffer()
+            await pc.setLocalDescription(offer)
+
             socket.send(
-              JSON.stringify({
-                data: {
-                  candidate: e.candidate,
-                  type: 'reciever',
-                  roomId,
-                },
-                type: 'add-ice-candidate',
-              })
+              JSON.stringify({ type: 'offer', data: { sdp: offer, roomId } })
             )
           }
 
-          socket.send(
-            JSON.stringify({
-              roomId,
-              sdp,
-            })
-          )
-
-          setTimeout(async () => {
-            const track1 = pc.getTransceivers()[0].receiver.track
-            const track2 = pc.getTransceivers()[1].receiver.track
-
-            console.log(track1)
-
-            if (track1.kind === 'video') {
-              setRemoteAudioTrack(track2)
-              setRemoteVideoTrack(track1)
-            } else {
-              setRemoteAudioTrack(track1)
-              setRemoteVideoTrack(track2)
-            }
-
-            if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
-              // @ts-ignore
-              remoteVideoRef.current.srcObject.addTrack(track1)
-              // @ts-ignore
-              remoteVideoRef.current.srcObject.addTrack(track2)
-              await remoteVideoRef.current.play()
-            }
-          }, 5000)
           break
+        }
 
-        case 'answer':
-          const { roomId: asnwerRoomId, sdp: answerSdp } = data.data
-
+        case 'offer': {
+          const { roomId, sdp: remoteSdp } = data.data
           setLobby(false)
 
-          setSendingPC((pc) => {
-            if (pc) {
-              pc.setRemoteDescription(answerSdp)
+          const pc = new RTCPeerConnection()
+          setReceivingPC(pc)
+
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              socket.send(
+                JSON.stringify({
+                  type: 'add-ice-candidate',
+                  data: { roomId, candidate: e.candidate, type: 'receiver' },
+                })
+              )
             }
-            return pc
-          })
+          }
 
-          console.log('loop closed')
+          pc.ontrack = async (event) => {
+            console.log('🎥 Track event received:', event)
+
+            if (event.streams.length > 0 && remoteVideoRef.current) {
+              console.log('✅ Remote stream received:', event.streams[0])
+              remoteVideoRef.current.srcObject = event.streams[0]
+
+              try {
+                await remoteVideoRef.current.play()
+                console.log('▶️ Remote video playing')
+              } catch (err) {
+                console.error('❌ Error playing remote video:', err)
+              }
+            } else {
+              console.warn('⚠️ No streams in track event.')
+            }
+          }
+
+          await pc.setRemoteDescription(new RTCSessionDescription(remoteSdp))
+          const answer = await pc.createAnswer()
+          await pc.setLocalDescription(answer)
+
+          socket.send(
+            JSON.stringify({ type: 'answer', data: { sdp: answer, roomId } })
+          )
+
           break
+        }
 
-        case 'add-ice-candidate':
-          const { candidate, type } = data.data
-          console.log('add ice candidate from remote')
-          console.log({ candidate, type })
-
-          if (type === 'sender') {
-            setRecievingPC((pc) => {
-              pc?.addIceCandidate(candidate)
-              return pc
-            })
-          } else {
-            setSendingPC((pc) => {
-              pc?.addIceCandidate(candidate)
-              return pc
-            })
+        case 'answer': {
+          if (sendingPc) {
+            await sendingPc.setRemoteDescription(
+              new RTCSessionDescription(data.data.sdp)
+            )
           }
           break
+        }
+
+        case 'add-ice-candidate': {
+          const { candidate, type } = data.data
+          try {
+            if (type === 'sender' && receivingPc) {
+              await receivingPc.addIceCandidate(new RTCIceCandidate(candidate))
+              console.log('✅ Receiver added ICE candidate:', candidate)
+            } else if (type === 'receiver' && sendingPc) {
+              await sendingPc.addIceCandidate(new RTCIceCandidate(candidate))
+              console.log('✅ Sender added ICE candidate:', candidate)
+            }
+          } catch (error) {
+            console.error('❌ Error adding ICE candidate:', error)
+          }
+          break
+        }
 
         case 'lobby':
           setLobby(true)
           break
 
         default:
+          console.warn('⚠️ Unknown WebSocket message type:', data.type)
           break
       }
     }
-  }, [])
 
-  async function initVideo() {
-    if (!localVideoRef || !localVideoRef.current) {
-      return
+    return () => {
+      console.log('🧹 Cleaning up WebRTC connections...')
+      socket.close()
+      sendingPc?.close()
+      receivingPc?.close()
     }
-    if (!localVideoTrack) {
-      return
-    }
-    localVideoRef.current.srcObject = new MediaStream([localVideoTrack])
-    await localVideoRef.current.play()
-  }
+  }, [localVideoTrack])
 
   useEffect(() => {
-    initVideo()
-  }, [])
+    if (localVideoRef.current && localVideoTrack) {
+      const stream = new MediaStream([localVideoTrack])
+      localVideoRef.current.srcObject = stream
+    }
+  }, [localVideoTrack])
 
   return (
     <div>
+      <h3>{lobby ? '⌛ Waiting for connection...' : '✅ Connected!'}</h3>
       <video
-        // autoPlay
         ref={localVideoRef}
         width={500}
         height={500}
-      ></video>
+        autoPlay
+        muted
+        playsInline
+      />
       <video
-        className="border"
+        ref={remoteVideoRef}
         width={500}
         height={500}
-        ref={remoteVideoRef}
-      ></video>
+        autoPlay
+        playsInline
+      />
     </div>
   )
 }

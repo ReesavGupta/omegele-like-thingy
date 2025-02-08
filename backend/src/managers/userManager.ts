@@ -85,6 +85,10 @@ export default class userManager {
           type,
         }: { roomId: string; candidate: string; type: string } = message.data
 
+        console.log(`logging roomId: ${roomId}`)
+        console.log(`logging candidate: ${candidate}`)
+        console.log(`logging type: ${type}`)
+
         this.room.onAddIceCandidate(roomId, candidate, type, socket)
       }
     }
