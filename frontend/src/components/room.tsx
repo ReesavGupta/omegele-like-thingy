@@ -87,11 +87,30 @@ export const Room: React.FC<RoomProps> = ({ localVideoTrack }) => {
 
             if (event.streams.length > 0 && remoteVideoRef.current) {
               console.log('✅ Remote stream received:', event.streams[0])
-              remoteVideoRef.current.srcObject = event.streams[0]
+
+              if (remoteVideoRef.current.srcObject !== event.streams[0]) {
+                remoteVideoRef.current.srcObject = event.streams[0]
+              }
 
               try {
-                await remoteVideoRef.current.play()
-                console.log('▶️ Remote video playing')
+                const isPlaying =
+                  remoteVideoRef.current.currentTime > 0 &&
+                  !remoteVideoRef.current.paused &&
+                  !remoteVideoRef.current.ended &&
+                  remoteVideoRef.current.readyState >
+                    remoteVideoRef.current.HAVE_CURRENT_DATA
+
+                if (!isPlaying) {
+                  // video.play()
+                  console.log('above playyyyyyy')
+                  const playInstance = await remoteVideoRef.current
+                    .play()
+                    .catch((e) => console.warn('video play error: ', e))
+
+                  console.log('play instance:', playInstance)
+
+                  console.log('▶️ Remote video playing')
+                }
               } catch (err) {
                 console.error('❌ Error playing remote video:', err)
               }
@@ -160,6 +179,24 @@ export const Room: React.FC<RoomProps> = ({ localVideoTrack }) => {
       localVideoRef.current.srcObject = stream
     }
   }, [localVideoTrack])
+
+  useEffect(() => {
+    const enablePlayback = () => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current
+          .play()
+          .catch((err) => console.warn('Playback failed:', err))
+      }
+    }
+
+    document.addEventListener('click', enablePlayback)
+    document.addEventListener('keydown', enablePlayback)
+
+    return () => {
+      document.removeEventListener('click', enablePlayback)
+      document.removeEventListener('keydown', enablePlayback)
+    }
+  }, [])
 
   return (
     <div>
